@@ -124,14 +124,14 @@ function beginSummon(b){b.state='summon';b.stateT=.85;b.sumCd=11;[clamp(b.x-190,
 function beginSweep(b){b.state='sweepcast';b.stateT=.7;b.sweepCd=9;sweeps.push({x:b.x+b.face*34,dir:b.face,warn:.7,life:2.8,dmg:Math.round(16*foeScale().dmg),hitDone:false});toast('THE FLOOR BURNS')}
 function spawnBoss(){boss={kind:stage===2?'matriarch':'warden',x:Math.min(3000,p.x+460),h:stage===2?118:120,hp:Math.round((stage===2?560:520)*foeScale().bossHp),max:Math.round((stage===2?560:520)*foeScale().bossHp),vx:0,face:-1,state:'chase',stateT:0,atkCd:1.6,warn:0,dead:false,death:0,hurt:0,anim:0,phase:1,sumCd:0,sweepCd:0,spikeCd:5,rainCd:8,alt:0};el.boss.style.display='block';$('bossname').textContent=stage===2?'THE CRIMSON MATRIARCH':'THE HOLLOW WARDEN';toast(stage===2?'THE CRIMSON MATRIARCH AWAKENS':'THE HOLLOW WARDEN AWAKENS');sfx('roar')}
 function fireOrb(wx,wy,vx,vy,dmg,owner,color,r){orbs.push({x:wx,y:wy,vx,vy,dmg,owner,color,r:r||6,life:1.5,trail:[]})}
-function attack(){if(!run||pause||cd.a>0||!p||p.hp<=0)return;cd.a=.34;swing=.27;p.state='attack';sfx('slash');const a=cfg[hero],dir=p.face;
+function attack(){if(!run||pause||cd.a>0||!p||p.hp<=0)return;cd.a=.34;swing=.27;sfx('slash');const a=cfg[hero],dir=p.face;
   if(hero==='witch'){fireOrb(p.x+dir*20,ground()+p.y-40,dir*540,0,pDmg(a.damage),'hero',a.glow,6);particle(p.x+dir*22,ground()+p.y-40,a.glow,5,80);return}
   const reach=a.reach;let hit=false;
   foes.forEach(e=>{if(!e.dead&&Math.abs(e.x-p.x)<reach&&((e.x-p.x)*dir>-10)){hurtEnemy(e,pDmg(a.damage),dir);hit=true}});
   if(boss&&!boss.dead&&Math.abs(boss.x-p.x)<reach+28&&((boss.x-p.x)*dir>-15)){hurtBoss(pDmg(a.damage),dir);hit=true}
   slash(p.x+dir*35,ground()+p.y-p.h*.6,dir,a.glow,45);
   if(hit){flash=Math.max(flash,.035);particle(p.x+dir*50,ground()+p.y-p.h*.55,a.glow,8,120)}}
-function skill(){if(!run||pause||cd.s>0||!p||p.hp<=0)return;const a=cfg[hero],dir=p.face;cd.s=hero==='witch'?4.4*(1-.12*meta.trees.witch.b):3.2;skilltime=.4;p.state='skill';
+function skill(){if(!run||pause||cd.s>0||!p||p.hp<=0)return;const a=cfg[hero],dir=p.face;cd.s=hero==='witch'?4.4*(1-.12*meta.trees.witch.b):3.2;skilltime=.4;
   particle(p.x,ground()+p.y-p.h*.5,a.glow,22,200);ring(p.x,ground()+p.y-26,a.glow,hero==='witch'?190:110);doShake(hero==='knight'?6:3,.16);
   foes.forEach(e=>{if(!e.dead&&Math.abs(e.x-p.x)<(hero==='witch'?330:150)&&(hero==='witch'||(e.x-p.x)*dir>0))hurtEnemy(e,pSkillDmg(hero==='knight'?46:hero==='witch'?38:34),Math.sign(e.x-p.x)||dir)});
   if(boss&&!boss.dead&&Math.abs(boss.x-p.x)<(hero==='witch'?350:160))hurtBoss(pSkillDmg(hero==='knight'?55:hero==='witch'?42:40),dir);
@@ -320,7 +320,7 @@ function drawPlayer(a,g){const feet=g+p.y;x.save();x.translate(a,feet);x.scale(p
   if(skilltime>0){x.save();x.shadowColor=cfg[hero].glow;x.shadowBlur=18;drawHeroFigure(x,hero,{anim:p.anim,state:p.state,swingP:swing>0?1-swing/.27:0,skillOn:true,hurt:p.hurtT>0,cloak:p.cloak});x.restore()}
   else drawHeroFigure(x,hero,{anim:p.anim,state:p.state,swingP:swing>0?1-swing/.27:0,skillOn:false,hurt:p.hurtT>0,cloak:p.cloak});
   x.restore()}
-function drawEnemy(e,a,g){if(a<-110||a>W+110)return;const d=ETYPE[e.type];x.save();x.translate(a,g);x.scale(e.face,1);
+function drawEnemy(e,a,g){if(a<-110||a>W+110)return;x.save();x.translate(a,g);x.scale(e.face,1);
   x.globalAlpha=e.dead?Math.max(0,e.death/.65):1;
   x.fillStyle='rgba(4,3,9,.5)';x.beginPath();x.ellipse(0,2,e.type==='brute'?30:22,5.4,0,0,7);x.fill();
   const hurt=e.hurt>0,rf=e.state==='windup'?1-e.stateT/(e.type==='brute'?.62:.42):e.state==='strike'?1:0,wob=Math.sin(e.anim*1.7)*1.4;
@@ -395,6 +395,7 @@ function drawMatriarch(b,a,g){if(a<-190||a>W+190)return;x.save();x.translate(a,g
 function drawPortraits(){document.querySelectorAll('.hero').forEach(btn=>{const cv=btn.querySelector('canvas');if(!cv)return;const g2=cv.getContext('2d');g2.clearRect(0,0,52,62);g2.save();g2.translate(26,60);g2.scale(.88,.88);drawHeroFigure(g2,btn.dataset.h,{anim:1.3,state:'idle',swingP:0,skillOn:false,hurt:false,cloak:1.2});g2.restore()})}
 // ---------- input ----------
 function togglePause(force){if(!run)return;pause=force!==undefined?force:!pause;el.pause.textContent=pause?'▶ RESUME':'Ⅱ PAUSE';if(pause)toast('PAUSED');else{el.toast.style.opacity=0;toastTime=0}}
+const zone=$('joy'),knob=$('knob');
 function clearInput(){if(joy.on){joy.on=false;joy.dx=0;knob.style.transform='translate(0,0)'}}
 addEventListener('blur',clearInput);
 let fsTried=false;
@@ -403,7 +404,6 @@ document.addEventListener('pointerdown',tryFullscreen);
 document.addEventListener('gesturestart',e=>e.preventDefault());
 el.pause.onclick=()=>togglePause();
 document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInput();if(run&&!pause)togglePause(true)}});
-const zone=$('joy'),knob=$('knob');
 zone.onpointerdown=e=>{e.preventDefault();joy.on=true;joy.id=e.pointerId;zone.setPointerCapture(e.pointerId);moveJoy(e)};
 zone.onpointermove=e=>{if(joy.on&&e.pointerId===joy.id)moveJoy(e)};
 function moveJoy(e){const r=zone.getBoundingClientRect();let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);if(rotated){const vx=dx;dx=dy;dy=-vx}const max=r.width*.29,len=Math.hypot(dx,dy),f=len>max?max/len:1;joy.dx=clamp(dx/max,-1,1);knob.style.transform=`translate(${dx*f}px,${dy*f}px)`}
