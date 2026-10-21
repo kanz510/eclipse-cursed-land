@@ -5,7 +5,7 @@
 (()=>{const c=document.querySelector('#c'),x=c.getContext('2d'),$=id=>document.getElementById(id);
 const REDUCED=typeof matchMedia!=='undefined'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 // ---------- state ----------
-let W=0,H=0,dpr=1,run=false,pause=false,ended=false,hero='wanderer',p=null,foes=[],sparks=[],orbs=[],rings=[],coins=0,kills=0,potions=3,boss=null,cam=0,t=0,last=0,flash=0,cd={a:0,s:0,j:0,p:0},swing=0,skilltime=0,toastTime=0,freeze=0,shake=0,shakeMag=0,endTimer=-1,timeScale=1;
+let W=0,H=0,dpr=1,run=false,pause=false,ended=false,hero='wanderer',p=null,foes=[],sparks=[],orbs=[],rings=[],coins=0,kills=0,potions=3,boss=null,cam=0,t=0,last=0,flash=0,cd={a:0,s:0,j:0,p:0},swing=0,skilltime=0,toastTime=0,freeze=0,shake=0,shakeMag=0,endTimer=-1,timeScale=1,endCause=null;
 const WORLD=3100,P_H=56;
 const cfg={wanderer:{name:'THE WANDERER',hp:100,speed:222,damage:24,color:'#d7c6a4',glow:'#e8b95d',cloth:'#4a3c43',reach:84,skillName:'MOONCUT',glyph:'☾'},witch:{name:'ASHEN WITCH',hp:82,speed:205,damage:17,color:'#b8a0d9',glow:'#b87cff',cloth:'#3a2a55',reach:0,skillName:'SOULFLARE',glyph:'✦'},knight:{name:'DREAD KNIGHT',hp:135,speed:176,damage:34,color:'#c8ccd6',glow:'#e75a72',cloth:'#51222d',reach:102,skillName:'GRAVEWAVE',glyph:'♜'}};
 const ETYPE={husk:{h:56,hp:58,speed:66,dmg:10},wraith:{h:64,hp:42,speed:52,dmg:9},brute:{h:76,hp:115,speed:38,dmg:14}};
@@ -51,14 +51,14 @@ function doShake(mag,dur){if(REDUCED)return;shakeMag=mag;shake=Math.max(shake,du
 function toast(s){el.toast.textContent=s;el.toast.style.opacity=1;toastTime=1.4}
 // ---------- game flow ----------
 function spawnFoes(){foes=[];for(let i=0;i<9;i++){const type=i%3===1?'wraith':(i%4===3?'brute':'husk'),d=ETYPE[type];foes.push({x:380+i*285,hp:d.hp,max:d.hp,h:d.h,type,vx:0,vy:0,face:-1,anim:Math.random()*5,hurt:0,state:'chase',stateT:0,atkCd:1+Math.random(),dead:false,death:0})}}
-function start(){const a=cfg[hero];p={x:100,y:0,vy:0,vx:0,hp:a.hp,max:a.hp,h:P_H,face:1,ground:true,inv:0,anim:0,state:'idle',hurtT:0,cloak:0};foes=[];sparks=[];orbs=[];rings=[];coins=kills=0;potions=3;boss=null;cam=0;cd={a:0,s:0,j:0,p:0};swing=skilltime=flash=freeze=shake=0;ended=false;endTimer=-1;timeScale=1;spawnFoes();el.menu.style.display='block';el.ending.style.display='none';el.overlay.style.display='none';el.hud.style.display='block';el.heroname.textContent=a.name;el.skillglyph.textContent=a.glyph;el.boss.style.display='none';el.kills.textContent='0 / 6';run=true;pause=false;el.pause.textContent='Ⅱ PAUSE';toast('THE HOLLOW MARCH');last=performance.now()}
+function start(){const a=cfg[hero];p={x:100,y:0,vy:0,vx:0,hp:a.hp,max:a.hp,h:P_H,face:1,ground:true,inv:0,anim:0,state:'idle',hurtT:0,cloak:0};foes=[];sparks=[];orbs=[];rings=[];coins=kills=0;potions=3;boss=null;cam=0;cd={a:0,s:0,j:0,p:0};swing=skilltime=flash=freeze=shake=0;ended=false;endTimer=-1;endCause=null;timeScale=1;spawnFoes();el.menu.style.display='block';el.ending.style.display='none';el.overlay.style.display='none';el.hud.style.display='block';el.heroname.textContent=a.name;el.skillglyph.textContent=a.glyph;el.boss.style.display='none';el.kills.textContent='0 / 6';run=true;pause=false;el.pause.textContent='Ⅱ PAUSE';toast('THE HOLLOW MARCH');last=performance.now()}
 function end(win){if(ended)return;ended=true;run=false;el.overlay.style.display='flex';el.menu.style.display='none';el.ending.style.display='block';el.endtitle.textContent=win?'VICTORY':'FALLEN';el.endstory.textContent=win?'The Hollow Warden crumbles into ash. Souls gathered: '+coins+'.':'The cursed land claims another wanderer. Gather your strength and return.'}
 $('start').onclick=start;$('again').onclick=start;$('mainmenu').onclick=()=>{el.overlay.style.display='flex';el.menu.style.display='block';el.ending.style.display='none';el.hud.style.display='none';run=false};
 document.querySelectorAll('[data-h]').forEach(b=>b.onclick=()=>{hero=b.dataset.h;document.querySelectorAll('.hero').forEach(e=>e.classList.toggle('sel',e===b))});
 // ---------- combat ----------
-function hurtPlayer(n,dir){if(!p||p.inv>0||ended||p.hp<=0)return;p.hp-=n;p.inv=.6;p.hurtT=.28;p.x=clamp(p.x+dir*16,20,WORLD);flash=.09;doShake(5,.18);particle(p.x,ground()+p.y-p.h*.55,'#e85870',9,110);if(p.hp<=0){p.hp=0;endTimer=0.9;timeScale=.3}}
+function hurtPlayer(n,dir){if(!p||p.inv>0||ended||p.hp<=0)return false;p.hp-=n;p.inv=.6;p.hurtT=.28;p.x=clamp(p.x+dir*16,20,WORLD);flash=.09;doShake(5,.18);particle(p.x,ground()+p.y-p.h*.55,'#e85870',9,110);if(p.hp<=0){p.hp=0;if(!endCause){endTimer=.9;endCause='lose';timeScale=.3}}return true}
 function hurtEnemy(e,n,dir){if(e.dead)return;e.hp-=n;e.hurt=.18;e.vx=dir*215;text(e.x,ground()-e.h-8,'-'+n,'#f5d69c');freeze=Math.max(freeze,.028);if(e.hp<=0){e.dead=true;e.death=.65;kills++;coins+=Math.floor(4+Math.random()*7);particle(e.x,ground()-e.h*.5,'#ad92b8',15,150);freeze=Math.max(freeze,.05);el.kills.textContent=Math.min(kills,6)+' / 6';el.coins.textContent='◈ '+coins;if(kills>=6&&!boss)spawnBoss()}}
-function hurtBoss(n,dir){if(!boss||boss.dead)return;boss.hp-=n;boss.hurt=.2;boss.vx=dir*90;text(boss.x,ground()-boss.h-10,'-'+n,'#ff8495');particle(boss.x,ground()-boss.h*.55,'#ee536d',11,140);freeze=Math.max(freeze,.035);if(boss.hp<=0){boss.dead=true;boss.death=1.1;particle(boss.x,ground()-boss.h*.5,'#f5c873',55,250);ring(boss.x,ground()-40,'#f5c873',150);doShake(8,.3);endTimer=1.15;timeScale=.35}}
+function hurtBoss(n,dir){if(!boss||boss.dead)return;boss.hp-=n;boss.hurt=.2;boss.vx=dir*90;text(boss.x,ground()-boss.h-10,'-'+n,'#ff8495');particle(boss.x,ground()-boss.h*.55,'#ee536d',11,140);freeze=Math.max(freeze,.035);if(boss.hp<=0){boss.dead=true;boss.death=1.1;particle(boss.x,ground()-boss.h*.5,'#f5c873',55,250);ring(boss.x,ground()-40,'#f5c873',150);doShake(8,.3);if(!endCause){endTimer=1.15;endCause='win'}timeScale=.35}}
 function spawnBoss(){boss={x:Math.min(3000,p.x+460),h:120,hp:520,max:520,vx:0,face:-1,state:'chase',stateT:0,atkCd:1.6,warn:0,dead:false,death:0,hurt:0,anim:0,phase:1};el.boss.style.display='block';toast('THE HOLLOW WARDEN AWAKENS')}
 function fireOrb(wx,wy,vx,vy,dmg,owner,color,r){orbs.push({x:wx,y:wy,vx,vy,dmg,owner,color,r:r||6,life:1.5,trail:[]})}
 function attack(){if(!run||pause||cd.a>0||!p||p.hp<=0)return;cd.a=.34;swing=.27;p.state='attack';const a=cfg[hero],dir=p.face;
@@ -101,7 +101,7 @@ function updateEnemy(e,dt){if(e.dead){e.death-=dt;return}
 function updateBoss(dt){const b=boss;if(!b||b.dead){if(b)b.death-=dt;return}
   b.anim+=dt;b.hurt=Math.max(0,b.hurt-dt);b.stateT-=dt;b.atkCd-=dt;
   if(b.phase===1&&b.hp<=b.max*.5){b.phase=2;toast('THE WARDEN RAGES');ring(b.x,ground()-50,'#ff596f',130);doShake(6,.25)}
-  const dx=p.x-b.x,adx=Math.abs(dx);b.face=dx>0?1:-1;
+  const dx=p.x-b.x,adx=Math.abs(dx);if(b.state!=='windup')b.face=dx>0?1:-1;
   if(b.state==='chase'){
     if(adx>100)b.vx+=(b.face*(b.phase===2?68:52)-b.vx)*Math.min(1,dt*2);
     else b.vx*=Math.max(0,1-dt*5);
@@ -109,7 +109,7 @@ function updateBoss(dt){const b=boss;if(!b||b.dead){if(b)b.death-=dt;return}
   }else if(b.state==='windup'){b.vx*=Math.max(0,1-dt*6);
     if(b.stateT<=0){b.state='recover';b.stateT=b.phase===2?.55:.8;b.atkCd=b.phase===2?1.5:2.2;
       ring(b.x+b.face*58,ground()-6,'#ff596f',120);doShake(7,.22);particle(b.x+b.face*60,ground()-10,'#c96a4a',16,170);
-      if(adx<150&&Math.abs(p.y)<46)hurtPlayer(22,b.face)}
+      const rel=(p.x-b.x)*b.face;if(rel>-40&&rel<175&&Math.abs(p.y)<46)hurtPlayer(22,b.face)}
   }else if(b.state==='cast'){b.vx*=Math.max(0,1-dt*6);
     if(b.stateT<=0){b.state='recover';b.stateT=.7;b.atkCd=b.phase===2?1.7:2.4;
       const n=b.phase===2?5:3;for(let i=0;i<n;i++){const sp=250,off=(i-(n-1)/2)*.16;fireOrb(b.x+b.face*30,ground()-b.h+24,b.face*Math.cos(off)*sp,Math.sin(off)*sp-14,10,'foe','#ff7d92',7)}}}
@@ -120,11 +120,11 @@ function updateOrbs(dt){for(const o of orbs){o.life-=dt;o.trail.push({x:o.x,y:o.
     if(o.owner==='hero'){
       for(const e of foes){if(!e.dead&&Math.abs(e.x-o.x)<24&&Math.abs((ground()-e.h/2)-o.y)<e.h/2+8){hurtEnemy(e,o.dmg,Math.sign(o.vx)||1);o.life=0;particle(o.x,o.y,o.color,8,110);break}}
       if(o.life>0&&boss&&!boss.dead&&Math.abs(boss.x-o.x)<40&&Math.abs((ground()-boss.h/2)-o.y)<boss.h/2+8){hurtBoss(o.dmg,Math.sign(o.vx)||1);o.life=0;particle(o.x,o.y,o.color,8,110)}
-    }else if(p&&Math.abs(p.x-o.x)<20&&Math.abs((ground()+p.y-p.h/2)-o.y)<p.h/2+6){hurtPlayer(o.dmg,Math.sign(o.vx)||1);o.life=0}
+    }else if(p&&Math.abs(p.x-o.x)<20&&Math.abs((ground()+p.y-p.h/2)-o.y)<p.h/2+6){if(hurtPlayer(o.dmg,Math.sign(o.vx)||1))o.life=0}
   }
   orbs=orbs.filter(o=>o.life>0&&o.x>cam-80&&o.x<cam+W+80)}
 function update(dt){if(!run||pause||!p)return;t+=dt;
-  if(endTimer>0){endTimer-=dt/Math.max(timeScale,.001);if(endTimer<=0){const win=boss&&boss.dead;endTimer=-1;timeScale=1;end(!!win)}}
+  if(endTimer>0){endTimer-=dt/Math.max(timeScale,.001);if(endTimer<=0){const win=endCause==='win';endTimer=-1;timeScale=1;endCause=null;end(win)}}
   Object.keys(cd).forEach(k=>cd[k]=Math.max(0,cd[k]-dt));swing=Math.max(0,swing-dt);skilltime=Math.max(0,skilltime-dt);
   p.inv=Math.max(0,p.inv-dt);p.hurtT=Math.max(0,p.hurtT-dt);flash=Math.max(0,flash-dt);
   let input=joy.on?joy.dx:0;if(keys.left)input=-1;if(keys.right)input=1;
@@ -281,7 +281,7 @@ function drawBoss(b,a,g){if(a<-190||a>W+190)return;x.save();x.translate(a,g);x.s
 // ---------- chân dung chọn hero ----------
 function drawPortraits(){document.querySelectorAll('.hero').forEach(btn=>{const cv=btn.querySelector('canvas');if(!cv)return;const g2=cv.getContext('2d');g2.clearRect(0,0,52,62);g2.save();g2.translate(26,60);g2.scale(.88,.88);drawHeroFigure(g2,btn.dataset.h,{anim:1.3,state:'idle',swingP:0,skillOn:false,hurt:false,cloak:1.2});g2.restore()})}
 // ---------- input ----------
-function togglePause(force){if(!run)return;pause=force!==undefined?force:!pause;el.pause.textContent=pause?'▶ RESUME':'Ⅱ PAUSE';if(pause)toast('PAUSED')}
+function togglePause(force){if(!run)return;pause=force!==undefined?force:!pause;el.pause.textContent=pause?'▶ RESUME':'Ⅱ PAUSE';if(pause)toast('PAUSED');else{el.toast.style.opacity=0;toastTime=0}}
 let keysBound=false;
 addEventListener('keydown',e=>{const code=e.code||'';if(code==='ArrowLeft'||code==='KeyA')keys.left=true;if(code==='ArrowRight'||code==='KeyD')keys.right=true;if(code==='Space'||code==='ArrowUp'||code==='KeyW'){e.preventDefault();jump()}if(code==='KeyJ')attack();if(code==='KeyK')skill();if(code==='KeyL')potion();if(e.key==='Escape'||code==='KeyP')togglePause()});
 addEventListener('keyup',e=>{const code=e.code||'';if(code==='ArrowLeft'||code==='KeyA')keys.left=false;if(code==='ArrowRight'||code==='KeyD')keys.right=false});
@@ -307,6 +307,6 @@ function loop(ts){requestAnimationFrame(loop);let dtR=Math.min(.05,(ts-last)/100
   if(run&&!pause&&dt>0)update(dt);
   draw()}
 size();drawPortraits();requestAnimationFrame(loop);
-window.__eclipse={start,attack,skill,jump,potion,end,togglePause,get p(){return p},get foes(){return foes},get boss(){return boss},get orbs(){return orbs},get run(){return run},get kills(){return kills},get coins(){return coins},spawnBoss,cfg,ETYPE};
+if(typeof location!=='undefined'&&(location.protocol==='file:'||location.hash==='#dev'))window.__eclipse={start,attack,skill,jump,potion,end,togglePause,get p(){return p},get foes(){return foes},get boss(){return boss},get orbs(){return orbs},get run(){return run},get kills(){return kills},get coins(){return coins},spawnBoss,cfg,ETYPE};
 })();
 </script></body></html>
