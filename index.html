@@ -89,7 +89,7 @@ $('cursedbtn').onclick=()=>{if(!meta.cursedUnlocked)return;meta.cursed=!meta.cur
 $('stage-1').onclick=()=>{selStage=1;stage=1;buildScenery();refreshMetaUI()};
 $('stage-2').onclick=()=>{if(!meta.stage2Unlocked)return;selStage=2;stage=2;buildScenery();refreshMetaUI()};
 let resetArmUntil=0;
-$('resetprog').onclick=()=>{const b=$('resetprog');if(Date.now()>resetArmUntil){resetArmUntil=Date.now()+3000;b.textContent='⚠ BẤM LẠI ĐỂ XÓA SẠCH TIẾN TRÌNH';setTimeout(()=>{if(Date.now()>resetArmUntil)b.textContent='RESET TIẾN TRÌNH'},3100);return}resetArmUntil=0;const keepMuted=meta.muted;meta=freshMeta();meta.muted=keepMuted;saveMeta();b.textContent='RESET TIẾN TRÌNH';refreshMetaUI()};
+$('resetprog').onclick=()=>{const b=$('resetprog');if(Date.now()>resetArmUntil){resetArmUntil=Date.now()+3000;b.textContent='⚠ BẤM LẠI ĐỂ XÓA SẠCH TIẾN TRÌNH';setTimeout(()=>{if(Date.now()>resetArmUntil)b.textContent='RESET TIẾN TRÌNH'},3100);return}resetArmUntil=0;const keepMuted=meta.muted;meta=freshMeta();meta.muted=keepMuted;selStage=1;stage=1;buildScenery();saveMeta();b.textContent='RESET TIẾN TRÌNH';refreshMetaUI()};
 function toggleSnd(){meta.muted=!meta.muted;saveMeta();refreshMetaUI();if(!meta.muted)sfx('hit')}
 $('sndbtn').onclick=toggleSnd;$('snd').onclick=e=>{e.stopPropagation();toggleSnd()};
 // ---------- âm thanh Web Audio (tự tạo, không file ngoài) ----------
